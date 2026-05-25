@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <meta name="theme-color" content="#2a2118" />
+  <meta name="theme-color" content="#181c22" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="CasaContable" />
@@ -15,18 +15,20 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #f7f4f0; }
+    html, body { height: 100%; background: #181c22; color: #e8e8e8; }
     #root { min-height: 100vh; }
     .btn-add:hover { background: #e07b54 !important; }
-    .mov-row:hover { background: #faf8f6 !important; }
-    input[type=date]::-webkit-calendar-picker-indicator { opacity:.5; cursor:pointer; }
+    .mov-row:hover { background: #23282f !important; }
+    input[type=date]::-webkit-calendar-picker-indicator { opacity:.5; cursor:pointer; filter:invert(0.7); }
     select {
       -webkit-appearance: none; appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px !important;
     }
-    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background:#ddd; border-radius:99px; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 99px; }
     input, select, button { -webkit-tap-highlight-color: transparent; }
+    input::placeholder { color: #555; }
   </style>
 </head>
 <body>
@@ -35,110 +37,115 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-// ── Categorías ──────────────────────────────────────────────────────────────
 const CATS = [
-  { id: "renta",      label: "Renta",       icon: "🏠", color: "#e07b54" },
-  { id: "luz",        label: "Luz",         icon: "💡", color: "#f5c542" },
-  { id: "gas",        label: "Gas",         icon: "🔥", color: "#ff8c42" },
-  { id: "agua",       label: "Agua",        icon: "💧", color: "#5bc4d9" },
-  { id: "internet",   label: "Internet",    icon: "📶", color: "#9b6bd9" },
-  { id: "telefono",   label: "Teléfono",    icon: "📱", color: "#b06bd9" },
-  { id: "alimentos",  label: "Alimentos",   icon: "🛒", color: "#6bbf8e" },
-  { id: "transporte", label: "Transporte",  icon: "🚗", color: "#5b8fd9" },
-  { id: "salud",      label: "Salud",       icon: "💊", color: "#d96b8f" },
-  { id: "educacion",  label: "Educación",   icon: "📚", color: "#3aa3c7" },
-  { id: "ocio",       label: "Ocio",        icon: "🎬", color: "#c96bd9" },
-  { id: "otro",       label: "Otro",        icon: "📦", color: "#a0a0a0" },
+  { id:"renta",      label:"Renta",       icon:"🏠", color:"#e07b54" },
+  { id:"luz",        label:"Luz",         icon:"💡", color:"#f5c542" },
+  { id:"gas",        label:"Gas",         icon:"🔥", color:"#ff8c42" },
+  { id:"agua",       label:"Agua",        icon:"💧", color:"#5bc4d9" },
+  { id:"internet",   label:"Internet",    icon:"📶", color:"#9b6bd9" },
+  { id:"telefono",   label:"Teléfono",    icon:"📱", color:"#b06bd9" },
+  { id:"alimentos",  label:"Alimentos",   icon:"🛒", color:"#6bbf8e" },
+  { id:"transporte", label:"Transporte",  icon:"🚗", color:"#5b8fd9" },
+  { id:"salud",      label:"Salud",       icon:"💊", color:"#d96b8f" },
+  { id:"educacion",  label:"Educación",   icon:"📚", color:"#3aa3c7" },
+  { id:"ocio",       label:"Ocio",        icon:"🎬", color:"#c96bd9" },
+  { id:"otro",       label:"Otro",        icon:"📦", color:"#a0a0a0" },
 ];
 const CAT_MAP = Object.fromEntries(CATS.map(c => [c.id, c]));
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-const today   = () => new Date().toISOString().slice(0, 10);
-const uid     = () => Math.random().toString(36).slice(2, 9);
-const diffDays = (ds) => { const d=new Date(ds), n=new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); };
-const fmt     = (n) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN"}).format(n);
-const fmtDate = (d) => new Date(d+"T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
-const daysFromNow = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
-
+const today    = () => new Date().toISOString().slice(0,10);
+const uid      = () => Math.random().toString(36).slice(2,9);
+const diffDays = (ds) => { const d=new Date(ds),n=new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); };
+const fmt      = (n) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN"}).format(n);
+const fmtDate  = (d) => new Date(d+"T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
+const daysFrom = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
 const load = (k,def) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch { return def; } };
 const save = (k,v)   => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} };
 
-// ── Demo ─────────────────────────────────────────────────────────────────────
 const DEMO = [
-  { id:uid(), tipo:"gasto",   concepto:"Renta",       monto:8500,  cat:"renta",      fecha:today(), vencimiento:null,           pagado:true,  notas:"" },
-  { id:uid(), tipo:"gasto",   concepto:"Luz CFE",     monto:420,   cat:"luz",        fecha:today(), vencimiento:daysFromNow(5),  pagado:false, notas:"Bimestral" },
-  { id:uid(), tipo:"gasto",   concepto:"Gas LP",      monto:350,   cat:"gas",        fecha:today(), vencimiento:daysFromNow(2),  pagado:false, notas:"" },
-  { id:uid(), tipo:"gasto",   concepto:"Internet",    monto:649,   cat:"internet",   fecha:today(), vencimiento:daysFromNow(8),  pagado:false, notas:"" },
-  { id:uid(), tipo:"gasto",   concepto:"Despensa",    monto:1200,  cat:"alimentos",  fecha:today(), vencimiento:null,           pagado:true,  notas:"" },
-  { id:uid(), tipo:"gasto",   concepto:"Colegiatura", monto:2500,  cat:"educacion",  fecha:today(), vencimiento:daysFromNow(10), pagado:false, notas:"Mensual" },
-  { id:uid(), tipo:"ingreso", concepto:"Salario",     monto:22000, cat:"otro",       fecha:today(), vencimiento:null,           pagado:true,  notas:"Quincena" },
+  { id:uid(), tipo:"gasto",   concepto:"Renta",       monto:8500,  cat:"renta",     fecha:today(), vencimiento:null,        pagado:true,  notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Luz CFE",     monto:420,   cat:"luz",       fecha:today(), vencimiento:daysFrom(5),  pagado:false, notas:"Bimestral" },
+  { id:uid(), tipo:"gasto",   concepto:"Gas LP",      monto:350,   cat:"gas",       fecha:today(), vencimiento:daysFrom(2),  pagado:false, notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Internet",    monto:649,   cat:"internet",  fecha:today(), vencimiento:daysFrom(8),  pagado:false, notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Despensa",    monto:1200,  cat:"alimentos", fecha:today(), vencimiento:null,        pagado:true,  notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Colegiatura", monto:2500,  cat:"educacion", fecha:today(), vencimiento:daysFrom(10), pagado:false, notas:"Mensual" },
+  { id:uid(), tipo:"ingreso", concepto:"Salario",     monto:22000, cat:"otro",      fecha:today(), vencimiento:null,        pagado:true,  notas:"Quincena" },
 ];
 
-// ── Estilos ──────────────────────────────────────────────────────────────────
-const S = {
-  app:         { minHeight:"100vh", background:"#f7f4f0", fontFamily:"'DM Sans',sans-serif", color:"#2a2118" },
-  header:      { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 18px", background:"#fff", boxShadow:"0 1px 0 #e8e3dd", position:"sticky", top:0, zIndex:50 },
-  logoArea:    { display:"flex", alignItems:"center", gap:8 },
-  logoIcon:    { fontSize:26 },
-  logoText:    { fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#2a2118" },
-  addBtn:      { display:"flex", alignItems:"center", gap:6, padding:"8px 16px", background:"#2a2118", color:"#fff", border:"none", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, cursor:"pointer" },
-  banner:      { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 18px", borderBottom:"1px solid #e8e3dd" },
-  bannerLink:  { background:"none", border:"none", color:"#e07b54", fontWeight:700, cursor:"pointer", fontSize:14 },
-  tabs:        { display:"flex", background:"#fff", borderBottom:"1px solid #e8e3dd", padding:"0 12px", gap:2, overflowX:"auto" },
-  tab:         { padding:"12px 12px", background:"none", border:"none", borderBottom:"2px solid transparent", cursor:"pointer", fontSize:13, fontFamily:"'DM Sans',sans-serif", color:"#888", whiteSpace:"nowrap" },
-  tabActive:   { borderBottomColor:"#2a2118", color:"#2a2118", fontWeight:700 },
-  main:        { padding:"16px 16px 80px", maxWidth:640, margin:"0 auto" },
-  kpiRow:      { display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" },
-  kpi:         { flex:1, minWidth:110, background:"#fff", borderRadius:10, padding:"14px 16px", display:"flex", gap:10, alignItems:"center", boxShadow:"0 1px 4px #0001" },
-  kpiBig:      { flex:2 },
-  kpiVal:      { fontFamily:"'Playfair Display',serif", fontSize:19, fontWeight:700, lineHeight:1.1 },
-  kpiLabel:    { fontSize:11, color:"#888", marginTop:2 },
-  card:        { background:"#fff", borderRadius:12, padding:"14px 16px", marginBottom:14, boxShadow:"0 1px 4px #0001" },
-  sectionTitle:{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, margin:"0 0 12px" },
-  catRow:      { display:"flex", alignItems:"center", gap:8, marginBottom:10 },
-  barTrack:    { height:6, background:"#f0ede9", borderRadius:99, flex:2 },
-  barFill:     { height:6, borderRadius:99 },
-  movRow:      { display:"flex", gap:12, alignItems:"flex-start", padding:"12px", background:"#fff", borderRadius:10, marginBottom:8, boxShadow:"0 1px 3px #0001" },
-  vencRow:     { display:"flex", gap:12, alignItems:"flex-start", padding:"12px", background:"#fff", borderRadius:10, marginBottom:8, boxShadow:"0 1px 3px #0001" },
-  movConcepto: { fontWeight:600, fontSize:14, marginBottom:2 },
-  movMeta:     { fontSize:12, color:"#999" },
-  movMonto:    { fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700 },
-  movActions:  { display:"flex", gap:4, justifyContent:"flex-end", marginTop:4 },
-  iconBtn:     { background:"none", border:"none", cursor:"pointer", fontSize:14, padding:"4px 5px", color:"#666" },
-  badge:       { display:"inline-block", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:99, marginTop:4, color:"#555" },
-  filters:     { display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" },
-  searchInput: { flex:2, minWidth:140, padding:"8px 12px", border:"1px solid #e0dbd4", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:13, background:"#fff", outline:"none" },
-  sel:         { flex:1, minWidth:110, padding:"8px 10px", border:"1px solid #e0dbd4", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:13, background:"#fff", outline:"none" },
-  verMas:      { background:"none", border:"none", color:"#e07b54", fontWeight:700, cursor:"pointer", fontSize:13, padding:"6px 0 0", display:"block" },
-  empty:       { textAlign:"center", padding:"40px 20px", color:"#aaa", fontSize:14 },
-  overlay:     { position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" },
-  modalBox:    { width:"100%", maxWidth:500, background:"#fff", borderRadius:"16px 16px 0 0", padding:"20px 18px 36px", maxHeight:"90vh", overflowY:"auto" },
-  modalHeader: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 },
-  closeBtn:    { background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888", padding:"4px 8px" },
-  formRow:     { display:"flex", gap:8, marginBottom:12 },
-  tipBtn:      { flex:1, padding:"10px", border:"2px solid #e0dbd4", borderRadius:8, background:"#f9f7f5", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600 },
-  fieldWrap:   { display:"flex", flexDirection:"column", marginBottom:10 },
-  label:       { fontSize:12, color:"#888", marginBottom:4, fontWeight:600 },
-  input:       { padding:"10px 12px", border:"1px solid #e0dbd4", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:14, background:"#fff", outline:"none" },
-  modalFooter: { display:"flex", gap:10, marginTop:16 },
-  cancelBtn:   { flex:1, padding:"12px", background:"#f0ede9", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600 },
-  saveBtn:     { flex:2, padding:"12px", background:"#2a2118", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700 },
+// ── Paleta oscura ────────────────────────────────────────────────────────────
+const D = {
+  bg:       "#181c22",
+  surface:  "#21262e",
+  surface2: "#2a2f38",
+  border:   "#2f3540",
+  text:     "#e8e8e8",
+  textMid:  "#a0a8b4",
+  textDim:  "#606878",
+  accent:   "#e07b54",
 };
 
-// ── VencBadge ────────────────────────────────────────────────────────────────
+const S = {
+  app:         { minHeight:"100vh", background:D.bg, fontFamily:"'DM Sans',sans-serif", color:D.text },
+  header:      { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 18px", background:D.surface, borderBottom:`1px solid ${D.border}`, position:"sticky", top:0, zIndex:50 },
+  logoArea:    { display:"flex", alignItems:"center", gap:8 },
+  logoIcon:    { fontSize:26 },
+  logoText:    { fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:D.text },
+  addBtn:      { display:"flex", alignItems:"center", gap:6, padding:"8px 16px", background:D.accent, color:"#fff", border:"none", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, cursor:"pointer" },
+  banner:      { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 18px", borderBottom:`1px solid ${D.border}` },
+  bannerLink:  { background:"none", border:"none", color:D.accent, fontWeight:700, cursor:"pointer", fontSize:14 },
+  tabs:        { display:"flex", background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"0 12px", gap:2, overflowX:"auto" },
+  tab:         { padding:"12px 12px", background:"none", border:"none", borderBottom:"2px solid transparent", cursor:"pointer", fontSize:13, fontFamily:"'DM Sans',sans-serif", color:D.textDim, whiteSpace:"nowrap" },
+  tabActive:   { borderBottomColor:D.accent, color:D.text, fontWeight:700 },
+  main:        { padding:"16px 16px 80px", maxWidth:640, margin:"0 auto" },
+  kpiRow:      { display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" },
+  kpi:         { flex:1, minWidth:110, background:D.surface, borderRadius:10, padding:"14px 16px", display:"flex", gap:10, alignItems:"center", boxShadow:"0 2px 8px #0004" },
+  kpiBig:      { flex:2 },
+  kpiVal:      { fontFamily:"'Playfair Display',serif", fontSize:19, fontWeight:700, lineHeight:1.1 },
+  kpiLabel:    { fontSize:11, color:D.textDim, marginTop:2 },
+  card:        { background:D.surface, borderRadius:12, padding:"14px 16px", marginBottom:14, boxShadow:"0 2px 8px #0003", border:`1px solid ${D.border}` },
+  sectionTitle:{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, margin:"0 0 12px", color:D.text },
+  catRow:      { display:"flex", alignItems:"center", gap:8, marginBottom:10 },
+  barTrack:    { height:6, background:D.surface2, borderRadius:99, flex:2 },
+  barFill:     { height:6, borderRadius:99 },
+  movRow:      { display:"flex", gap:12, alignItems:"flex-start", padding:"12px", background:D.surface, borderRadius:10, marginBottom:8, boxShadow:"0 1px 4px #0003", border:`1px solid ${D.border}` },
+  vencRow:     { display:"flex", gap:12, alignItems:"flex-start", padding:"12px", background:D.surface, borderRadius:10, marginBottom:8, boxShadow:"0 1px 4px #0003", border:`1px solid ${D.border}` },
+  movConcepto: { fontWeight:600, fontSize:14, marginBottom:2, color:D.text },
+  movMeta:     { fontSize:12, color:D.textDim },
+  movMonto:    { fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700 },
+  movActions:  { display:"flex", gap:4, justifyContent:"flex-end", marginTop:4 },
+  iconBtn:     { background:"none", border:"none", cursor:"pointer", fontSize:14, padding:"4px 5px", color:D.textMid },
+  badge:       { display:"inline-block", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:99, marginTop:4 },
+  filters:     { display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" },
+  searchInput: { flex:2, minWidth:140, padding:"8px 12px", border:`1px solid ${D.border}`, borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:13, background:D.surface, color:D.text, outline:"none" },
+  sel:         { flex:1, minWidth:110, padding:"8px 10px", border:`1px solid ${D.border}`, borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:13, background:D.surface, color:D.text, outline:"none" },
+  verMas:      { background:"none", border:"none", color:D.accent, fontWeight:700, cursor:"pointer", fontSize:13, padding:"6px 0 0", display:"block" },
+  empty:       { textAlign:"center", padding:"40px 20px", color:D.textDim, fontSize:14 },
+  overlay:     { position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" },
+  modalBox:    { width:"100%", maxWidth:500, background:D.surface, borderRadius:"16px 16px 0 0", padding:"20px 18px 36px", maxHeight:"90vh", overflowY:"auto", border:`1px solid ${D.border}` },
+  modalHeader: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 },
+  closeBtn:    { background:"none", border:"none", fontSize:20, cursor:"pointer", color:D.textMid, padding:"4px 8px" },
+  formRow:     { display:"flex", gap:8, marginBottom:12 },
+  tipBtn:      { flex:1, padding:"10px", border:`2px solid ${D.border}`, borderRadius:8, background:D.surface2, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:D.text },
+  fieldWrap:   { display:"flex", flexDirection:"column", marginBottom:10 },
+  label:       { fontSize:12, color:D.textDim, marginBottom:4, fontWeight:600 },
+  input:       { padding:"10px 12px", border:`1px solid ${D.border}`, borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:14, background:D.surface2, color:D.text, outline:"none" },
+  modalFooter: { display:"flex", gap:10, marginTop:16 },
+  cancelBtn:   { flex:1, padding:"12px", background:D.surface2, border:`1px solid ${D.border}`, borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:D.textMid },
+  saveBtn:     { flex:2, padding:"12px", background:D.accent, color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700 },
+};
+
 function VencBadge({ dias }) {
-  let txt, bg;
-  if (dias < 0)     { txt=`Vencido hace ${-dias} día${-dias!==1?"s":""}`; bg="#fde8e8"; }
-  else if(dias===0) { txt="Vence hoy";      bg="#fff3cd"; }
-  else if(dias<=3)  { txt=`Vence en ${dias} día${dias!==1?"s":""}`; bg="#fff3cd"; }
-  else              { txt=`En ${dias} días`; bg="#e8f5e9"; }
-  return <span style={{...S.badge, background:bg}}>{txt}</span>;
+  let txt, bg, col;
+  if (dias < 0)     { txt=`Vencido hace ${-dias}d`; bg="#3d1a1a"; col="#ff7070"; }
+  else if(dias===0) { txt="Vence hoy";               bg="#3d3010"; col="#f5c542"; }
+  else if(dias<=3)  { txt=`Vence en ${dias}d`;        bg="#3d3010"; col="#f5c542"; }
+  else              { txt=`En ${dias} días`;           bg="#1a2e1a"; col="#6bbf8e"; }
+  return <span style={{...S.badge, background:bg, color:col}}>{txt}</span>;
 }
 
-// ── KPI ──────────────────────────────────────────────────────────────────────
 function KPI({ label, value, color, icon, big }) {
   return (
-    <div style={{...S.kpi, ...(big?S.kpiBig:{}), borderTop:`3px solid ${color}`}}>
+    <div style={{...S.kpi,...(big?S.kpiBig:{}), borderTop:`3px solid ${color}`}}>
       <span style={{fontSize:22}}>{icon}</span>
       <div>
         <div style={{...S.kpiVal, color}}>{value}</div>
@@ -148,7 +155,6 @@ function KPI({ label, value, color, icon, big }) {
   );
 }
 
-// ── MovRow ───────────────────────────────────────────────────────────────────
 function MovRow({ m, onEdit, onDel, onPago }) {
   const cat = CAT_MAP[m.cat] || CAT_MAP.otro;
   return (
@@ -158,7 +164,7 @@ function MovRow({ m, onEdit, onDel, onPago }) {
         <div style={S.movConcepto}>{m.concepto}</div>
         <div style={S.movMeta}>{fmtDate(m.fecha)} · {cat.label}{m.notas?" · "+m.notas:""}</div>
         {m.vencimiento && !m.pagado && <VencBadge dias={diffDays(m.vencimiento)} />}
-        {m.vencimiento && m.pagado  && <span style={{...S.badge, background:"#e8f5e9"}}>✓ Pagado</span>}
+        {m.vencimiento &&  m.pagado && <span style={{...S.badge, background:"#1a2e1a", color:"#6bbf8e"}}>✓ Pagado</span>}
       </div>
       <div style={{textAlign:"right"}}>
         <div style={{...S.movMonto, color:m.tipo==="ingreso"?"#2ecc71":"#e74c3c"}}>
@@ -166,19 +172,18 @@ function MovRow({ m, onEdit, onDel, onPago }) {
         </div>
         <div style={S.movActions}>
           {m.vencimiento && (
-            <button style={{...S.iconBtn, color:m.pagado?"#aaa":"#2ecc71"}} title={m.pagado?"Pendiente":"Pagado"} onClick={onPago}>
+            <button style={{...S.iconBtn, color:m.pagado?"#555":"#2ecc71"}} onClick={onPago}>
               {m.pagado?"↩":"✓"}
             </button>
           )}
           <button style={S.iconBtn} onClick={onEdit}>✏️</button>
-          <button style={{...S.iconBtn, color:"#e74c3c"}} onClick={()=>{ if(window.confirm("¿Eliminar este movimiento?")) onDel(); }}>🗑</button>
+          <button style={{...S.iconBtn, color:"#e74c3c"}} onClick={()=>{ if(window.confirm("¿Eliminar?")) onDel(); }}>🗑</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── VencRow ──────────────────────────────────────────────────────────────────
 function VencRow({ m, onPago, onEdit }) {
   const cat = CAT_MAP[m.cat] || CAT_MAP.otro;
   return (
@@ -200,7 +205,6 @@ function VencRow({ m, onPago, onEdit }) {
   );
 }
 
-// ── Field ────────────────────────────────────────────────────────────────────
 function Field({ label, type, value, onChange, placeholder }) {
   return (
     <div style={S.fieldWrap}>
@@ -210,38 +214,37 @@ function Field({ label, type, value, onChange, placeholder }) {
   );
 }
 
-// ── Modal ────────────────────────────────────────────────────────────────────
 function Modal({ initial, onSave, onClose }) {
   const blank = { tipo:"gasto", concepto:"", monto:"", cat:"renta", fecha:today(), vencimiento:"", pagado:false, notas:"" };
   const [form, setForm] = useState(initial ? {...initial, monto:String(initial.monto), vencimiento:initial.vencimiento||""} : blank);
-  const [err, setErr]   = useState("");
+  const [err, setErr] = useState("");
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
 
   const submit = () => {
-    if (!form.concepto.trim())                                   return setErr("El concepto es obligatorio.");
+    if (!form.concepto.trim()) return setErr("El concepto es obligatorio.");
     if (!form.monto || isNaN(Number(form.monto)) || Number(form.monto)<=0) return setErr("Ingresa un monto válido.");
-    onSave({ ...form, id:initial?.id, monto:Number(form.monto), vencimiento:form.vencimiento||null });
+    onSave({...form, id:initial?.id, monto:Number(form.monto), vencimiento:form.vencimiento||null});
   };
 
   return (
     <div style={S.overlay} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
       <div style={S.modalBox}>
         <div style={S.modalHeader}>
-          <span style={{fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700}}>
+          <span style={{fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:D.text}}>
             {initial?"Editar movimiento":"Nuevo movimiento"}
           </span>
           <button style={S.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        {/* Tipo ingreso / gasto */}
         <div style={S.formRow}>
-          {["ingreso","gasto"].map(t => (
+          {["ingreso","gasto"].map(t=>(
             <button key={t}
-              style={{...S.tipBtn, ...(form.tipo===t ? {
+              style={{...S.tipBtn,...(form.tipo===t?{
                 fontWeight:700,
-                background: t==="ingreso"?"#eafaf1":"#fdf0ed",
-                borderColor: t==="ingreso"?"#2ecc71":"#e07b54"
-              } : {})}}
+                background: t==="ingreso"?"#1a2e20":"#2e1e1a",
+                borderColor: t==="ingreso"?"#2ecc71":"#e07b54",
+                color: t==="ingreso"?"#2ecc71":"#e07b54"
+              }:{})}}
               onClick={()=>set("tipo",t)}>
               {t==="ingreso"?"📈 Ingreso":"📉 Gasto"}
             </button>
@@ -263,14 +266,14 @@ function Modal({ initial, onSave, onClose }) {
 
         {form.vencimiento && (
           <div style={{...S.fieldWrap, flexDirection:"row", alignItems:"center", gap:10}}>
-            <input type="checkbox" id="pagado" checked={form.pagado} onChange={e=>set("pagado",e.target.checked)} style={{width:17,height:17}} />
+            <input type="checkbox" id="pagado" checked={form.pagado} onChange={e=>set("pagado",e.target.checked)} style={{width:17,height:17,accentColor:D.accent}} />
             <label htmlFor="pagado" style={{...S.label, margin:0}}>Marcar como pagado</label>
           </div>
         )}
 
         <Field label="Notas (opcional)" type="text" value={form.notas} onChange={v=>set("notas",v)} placeholder="Bimestral, cuota fija…" />
 
-        {err && <p style={{color:"#c0392b", fontSize:13, margin:"4px 0 8px"}}>{err}</p>}
+        {err && <p style={{color:"#ff7070", fontSize:13, margin:"4px 0 8px"}}>{err}</p>}
 
         <div style={S.modalFooter}>
           <button style={S.cancelBtn} onClick={onClose}>Cancelar</button>
@@ -281,9 +284,8 @@ function Modal({ initial, onSave, onClose }) {
   );
 }
 
-// ── App principal ────────────────────────────────────────────────────────────
 function App() {
-  const [movs,     setMovs]     = useState(() => load("hf_movs", DEMO));
+  const [movs,     setMovs]     = useState(()=>load("hf_movs", DEMO));
   const [tab,      setTab]      = useState("resumen");
   const [modal,    setModal]    = useState(false);
   const [editing,  setEditing]  = useState(null);
@@ -307,7 +309,8 @@ function App() {
     .filter(m=>m.concepto.toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>b.fecha.localeCompare(a.fecha));
 
-  const porCat = CATS.map(c=>({...c, total:movs.filter(m=>m.tipo==="gasto"&&m.cat===c.id).reduce((s,m)=>s+m.monto,0)}))
+  const porCat = CATS
+    .map(c=>({...c, total:movs.filter(m=>m.tipo==="gasto"&&m.cat===c.id).reduce((s,m)=>s+m.monto,0)}))
     .filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
 
   const upsert = (mov) => {
@@ -324,7 +327,6 @@ function App() {
   return (
     <div style={S.app}>
 
-      {/* HEADER */}
       <header style={S.header}>
         <div style={S.logoArea}>
           <span style={S.logoIcon}>🏡</span>
@@ -335,10 +337,9 @@ function App() {
         </button>
       </header>
 
-      {/* BANNER ALERTAS */}
       {(vencidos.length>0||urgentes.length>0) && (
-        <div style={{...S.banner, background:vencidos.length?"#fef1ee":"#fffbeb"}}>
-          <span style={{fontSize:14}}>
+        <div style={{...S.banner, background:vencidos.length?"#2e1414":"#2e2410"}}>
+          <span style={{fontSize:14, color:vencidos.length?"#ff7070":"#f5c542"}}>
             {vencidos.length>0
               ? `⚠️ ${vencidos.length} pago${vencidos.length>1?"s":""} vencido${vencidos.length>1?"s":""}`
               : `🔔 ${urgentes.length} pago${urgentes.length>1?"s":""} vence en ≤ 3 días`}
@@ -347,7 +348,6 @@ function App() {
         </div>
       )}
 
-      {/* TABS */}
       <nav style={S.tabs}>
         {[["resumen","📊 Resumen"],["movimientos","📋 Movimientos"],["vencimientos","🔔 Vencimientos"]].map(([id,label])=>(
           <button key={id} style={{...S.tab,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
@@ -356,7 +356,6 @@ function App() {
 
       <main style={S.main}>
 
-        {/* ══ RESUMEN ══ */}
         {tab==="resumen" && (
           <div>
             <div style={S.kpiRow}>
@@ -371,11 +370,11 @@ function App() {
                 {porCat.map(c=>(
                   <div key={c.id} style={S.catRow}>
                     <span style={{fontSize:18}}>{c.icon}</span>
-                    <span style={{flex:1, fontSize:13}}>{c.label}</span>
+                    <span style={{flex:1, fontSize:13, color:D.textMid}}>{c.label}</span>
                     <div style={{...S.barTrack, margin:"0 10px"}}>
                       <div style={{...S.barFill, width:`${(c.total/gastos*100).toFixed(1)}%`, background:c.color}} />
                     </div>
-                    <span style={{fontSize:12, color:"#555", minWidth:68, textAlign:"right"}}>{fmt(c.total)}</span>
+                    <span style={{fontSize:12, color:D.textMid, minWidth:68, textAlign:"right"}}>{fmt(c.total)}</span>
                   </div>
                 ))}
               </section>
@@ -399,7 +398,6 @@ function App() {
           </div>
         )}
 
-        {/* ══ MOVIMIENTOS ══ */}
         {tab==="movimientos" && (
           <div>
             <div style={S.filters}>
@@ -426,18 +424,17 @@ function App() {
           </div>
         )}
 
-        {/* ══ VENCIMIENTOS ══ */}
         {tab==="vencimientos" && (
           <div>
             {vencidos.length>0 && (
               <section style={S.card}>
-                <h3 style={{...S.sectionTitle, color:"#c0392b"}}>⚠️ Vencidos</h3>
+                <h3 style={{...S.sectionTitle, color:"#ff7070"}}>⚠️ Vencidos</h3>
                 {vencidos.map(m=><VencRow key={m.id} m={m} onPago={()=>togglePago(m.id)} onEdit={()=>openEdit(m)} />)}
               </section>
             )}
             {urgentes.length>0 && (
               <section style={S.card}>
-                <h3 style={{...S.sectionTitle, color:"#e67e22"}}>🔔 Vencen pronto (≤ 3 días)</h3>
+                <h3 style={{...S.sectionTitle, color:"#f5c542"}}>🔔 Vencen pronto (≤ 3 días)</h3>
                 {urgentes.map(m=><VencRow key={m.id} m={m} onPago={()=>togglePago(m.id)} onEdit={()=>openEdit(m)} />)}
               </section>
             )}
