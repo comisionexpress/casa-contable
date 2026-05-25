@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#2a2118" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CasaContable" />
+  <title>CasaContable</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #f7f4f0; }
+    #root { min-height: 100vh; }
+    .btn-add:hover { background: #e07b54 !important; }
+    .mov-row:hover { background: #faf8f6 !important; }
+    input[type=date]::-webkit-calendar-picker-indicator { opacity:.5; cursor:pointer; }
+    select {
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px !important;
+    }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background:#ddd; border-radius:99px; }
+    input, select, button { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ── Categorías ──────────────────────────────────────────────────────────────
+const CATS = [
+  { id: "renta",      label: "Renta",       icon: "🏠", color: "#e07b54" },
+  { id: "luz",        label: "Luz",         icon: "💡", color: "#f5c542" },
+  { id: "gas",        label: "Gas",         icon: "🔥", color: "#ff8c42" },
+  { id: "agua",       label: "Agua",        icon: "💧", color: "#5bc4d9" },
+  { id: "internet",   label: "Internet",    icon: "📶", color: "#9b6bd9" },
+  { id: "telefono",   label: "Teléfono",    icon: "📱", color: "#b06bd9" },
+  { id: "alimentos",  label: "Alimentos",   icon: "🛒", color: "#6bbf8e" },
+  { id: "transporte", label: "Transporte",  icon: "🚗", color: "#5b8fd9" },
+  { id: "salud",      label: "Salud",       icon: "💊", color: "#d96b8f" },
+  { id: "educacion",  label: "Educación",   icon: "📚", color: "#3aa3c7" },
+  { id: "ocio",       label: "Ocio",        icon: "🎬", color: "#c96bd9" },
+  { id: "otro",       label: "Otro",        icon: "📦", color: "#a0a0a0" },
+];
+const CAT_MAP = Object.fromEntries(CATS.map(c => [c.id, c]));
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+const today   = () => new Date().toISOString().slice(0, 10);
+const uid     = () => Math.random().toString(36).slice(2, 9);
+const diffDays = (ds) => { const d=new Date(ds), n=new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); };
+const fmt     = (n) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN"}).format(n);
+const fmtDate = (d) => new Date(d+"T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
+const daysFromNow = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+
+const load = (k,def) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch { return def; } };
+const save = (k,v)   => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} };
+
+// ── Demo ─────────────────────────────────────────────────────────────────────
+const DEMO = [
+  { id:uid(), tipo:"gasto",   concepto:"Renta",       monto:8500,  cat:"renta",      fecha:today(), vencimiento:null,           pagado:true,  notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Luz CFE",     monto:420,   cat:"luz",        fecha:today(), vencimiento:daysFromNow(5),  pagado:false, notas:"Bimestral" },
+  { id:uid(), tipo:"gasto",   concepto:"Gas LP",      monto:350,   cat:"gas",        fecha:today(), vencimiento:daysFromNow(2),  pagado:false, notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Internet",    monto:649,   cat:"internet",   fecha:today(), vencimiento:daysFromNow(8),  pagado:false, notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Despensa",    monto:1200,  cat:"alimentos",  fecha:today(), vencimiento:null,           pagado:true,  notas:"" },
+  { id:uid(), tipo:"gasto",   concepto:"Colegiatura", monto:2500,  cat:"educacion",  fecha:today(), vencimiento:daysFromNow(10), pagado:false, notas:"Mensual" },
+  { id:uid(), tipo:"ingreso", concepto:"Salario",     monto:22000, cat:"otro",       fecha:today(), vencimiento:null,           pagado:true,  notas:"Quincena" },
+];
+
+// ── Estilos ──────────────────────────────────────────────────────────────────
+const S = {
+  app:         { minHeight:"100vh", background:"#f7f4f0", fontFamily:"'DM Sans',sans-serif", color:"#2a2118" },
+  header:      { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 18px", background:"#fff", boxShadow:"0 1px 0 #e8e3dd", position:"sticky", top:0, zIndex:50 },
+  logoArea:    { display:"flex", alignItems:"center", gap:8 },
+  logoIcon:    { fontSize:26 },
+  logoText:    { fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#2a2118" },
+  addBtn:      { display:"flex", alignItems:"center", gap:6, padding:"8px 16px", background:"#2a2118", color:"#fff", border:"none", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, cursor:"pointer" },
+  banner:      { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 18px", borderBottom:"1px solid #e8e3dd" },
+  bannerLink:  { background:"none", border:"none", color:"#e07b54", fontWeight:700, cursor:"pointer", fontSize:14 },
+  tabs:        { display:"flex", background:"#fff", borderBottom:"1px solid #e8e3dd", padding:"0 12px", gap:2, overflowX:"auto" },
+  tab:         { padding:"12px 12px", background:"none", border:"none", borderBottom:"2px solid transparent", cursor:"pointer", fontSize:13, fontFamily:"'DM Sans',sans-serif", color:"#888", whiteSpace:"nowrap" },
+  tabActive:   { borderBottomColor:"#2a2118", color:"#2a2118", fontWeight:700 },
+  main:        { padding:"16px 16px 80px", maxWidth:640, margin:"0 auto" },
+  kpiRow:      { display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" },
+  kpi:         { flex:1, minWidth:110, background:"#fff", borderRadius:10, padding:"14px 16px", display:"flex", gap:10, alignItems:"center", boxShadow:"0 1px 4px #0001" },
+  kpiBig:      { flex:2 },
+  kpiVal:      { fontFamily:"'Playfair Display',serif", fontSize:19, fontWeight:700, lineHeight:1.1 },
+  kpiLabel:    { fontSize:11, color:"#888", marginTop:2 },
+  card:        { background:"#fff", borderRadius:12, padding:"14px 16px", marginBottom:14, boxShadow:"0 1px 4px #0001" },
+  sectionTitle:{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, margin:"0 0 12px" },
+  catRow:      { display:"flex", alignItems:"center", gap:8, marginBottom:10 },
+  barTrack:    { height:6, background:"#f0ede9", borderRadius:99, flex:2 },
+  barFill:     { height:6, borderRadius:99 },
+  movRow:      { display:"flex", gap:12, alignItems:"flex-start", padding:"12px", background:"#fff", borderRadius:10, marginBottom:8, boxShadow:"0 1px 3px #0001" },
+  vencRow:     { display:"flex", gap:12, alignItems:"flex-start", padding:"12px", background:"#fff", borderRadius:10, marginBottom:8, boxShadow:"0 1px 3px #0001" },
+  movConcepto: { fontWeight:600, fontSize:14, marginBottom:2 },
+  movMeta:     { fontSize:12, color:"#999" },
+  movMonto:    { fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700 },
+  movActions:  { display:"flex", gap:4, justifyContent:"flex-end", marginTop:4 },
+  iconBtn:     { background:"none", border:"none", cursor:"pointer", fontSize:14, padding:"4px 5px", color:"#666" },
+  badge:       { display:"inline-block", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:99, marginTop:4, color:"#555" },
+  filters:     { display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" },
+  searchInput: { flex:2, minWidth:140, padding:"8px 12px", border:"1px solid #e0dbd4", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:13, background:"#fff", outline:"none" },
+  sel:         { flex:1, minWidth:110, padding:"8px 10px", border:"1px solid #e0dbd4", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:13, background:"#fff", outline:"none" },
+  verMas:      { background:"none", border:"none", color:"#e07b54", fontWeight:700, cursor:"pointer", fontSize:13, padding:"6px 0 0", display:"block" },
+  empty:       { textAlign:"center", padding:"40px 20px", color:"#aaa", fontSize:14 },
+  overlay:     { position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" },
+  modalBox:    { width:"100%", maxWidth:500, background:"#fff", borderRadius:"16px 16px 0 0", padding:"20px 18px 36px", maxHeight:"90vh", overflowY:"auto" },
+  modalHeader: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 },
+  closeBtn:    { background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888", padding:"4px 8px" },
+  formRow:     { display:"flex", gap:8, marginBottom:12 },
+  tipBtn:      { flex:1, padding:"10px", border:"2px solid #e0dbd4", borderRadius:8, background:"#f9f7f5", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600 },
+  fieldWrap:   { display:"flex", flexDirection:"column", marginBottom:10 },
+  label:       { fontSize:12, color:"#888", marginBottom:4, fontWeight:600 },
+  input:       { padding:"10px 12px", border:"1px solid #e0dbd4", borderRadius:8, fontFamily:"'DM Sans',sans-serif", fontSize:14, background:"#fff", outline:"none" },
+  modalFooter: { display:"flex", gap:10, marginTop:16 },
+  cancelBtn:   { flex:1, padding:"12px", background:"#f0ede9", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600 },
+  saveBtn:     { flex:2, padding:"12px", background:"#2a2118", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700 },
+};
+
+// ── VencBadge ────────────────────────────────────────────────────────────────
+function VencBadge({ dias }) {
+  let txt, bg;
+  if (dias < 0)     { txt=`Vencido hace ${-dias} día${-dias!==1?"s":""}`; bg="#fde8e8"; }
+  else if(dias===0) { txt="Vence hoy";      bg="#fff3cd"; }
+  else if(dias<=3)  { txt=`Vence en ${dias} día${dias!==1?"s":""}`; bg="#fff3cd"; }
+  else              { txt=`En ${dias} días`; bg="#e8f5e9"; }
+  return <span style={{...S.badge, background:bg}}>{txt}</span>;
+}
+
+// ── KPI ──────────────────────────────────────────────────────────────────────
+function KPI({ label, value, color, icon, big }) {
+  return (
+    <div style={{...S.kpi, ...(big?S.kpiBig:{}), borderTop:`3px solid ${color}`}}>
+      <span style={{fontSize:22}}>{icon}</span>
+      <div>
+        <div style={{...S.kpiVal, color}}>{value}</div>
+        <div style={S.kpiLabel}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── MovRow ───────────────────────────────────────────────────────────────────
+function MovRow({ m, onEdit, onDel, onPago }) {
+  const cat = CAT_MAP[m.cat] || CAT_MAP.otro;
+  return (
+    <div style={S.movRow} className="mov-row">
+      <span style={{fontSize:22, minWidth:28}}>{cat.icon}</span>
+      <div style={{flex:1, minWidth:0}}>
+        <div style={S.movConcepto}>{m.concepto}</div>
+        <div style={S.movMeta}>{fmtDate(m.fecha)} · {cat.label}{m.notas?" · "+m.notas:""}</div>
+        {m.vencimiento && !m.pagado && <VencBadge dias={diffDays(m.vencimiento)} />}
+        {m.vencimiento && m.pagado  && <span style={{...S.badge, background:"#e8f5e9"}}>✓ Pagado</span>}
+      </div>
+      <div style={{textAlign:"right"}}>
+        <div style={{...S.movMonto, color:m.tipo==="ingreso"?"#2ecc71":"#e74c3c"}}>
+          {m.tipo==="ingreso"?"+":"-"}{fmt(m.monto)}
+        </div>
+        <div style={S.movActions}>
+          {m.vencimiento && (
+            <button style={{...S.iconBtn, color:m.pagado?"#aaa":"#2ecc71"}} title={m.pagado?"Pendiente":"Pagado"} onClick={onPago}>
+              {m.pagado?"↩":"✓"}
+            </button>
+          )}
+          <button style={S.iconBtn} onClick={onEdit}>✏️</button>
+          <button style={{...S.iconBtn, color:"#e74c3c"}} onClick={()=>{ if(window.confirm("¿Eliminar este movimiento?")) onDel(); }}>🗑</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── VencRow ──────────────────────────────────────────────────────────────────
+function VencRow({ m, onPago, onEdit }) {
+  const cat = CAT_MAP[m.cat] || CAT_MAP.otro;
+  return (
+    <div style={S.vencRow}>
+      <span style={{fontSize:20, minWidth:28}}>{cat.icon}</span>
+      <div style={{flex:1}}>
+        <div style={S.movConcepto}>{m.concepto}</div>
+        <div style={S.movMeta}>Vence: {fmtDate(m.vencimiento)}</div>
+        <VencBadge dias={diffDays(m.vencimiento)} />
+      </div>
+      <div style={{textAlign:"right"}}>
+        <div style={{...S.movMonto, color:"#e74c3c"}}>{fmt(m.monto)}</div>
+        <div style={S.movActions}>
+          <button style={{...S.iconBtn, color:"#2ecc71", fontWeight:700, fontSize:13}} onClick={onPago}>✓ Pagar</button>
+          <button style={S.iconBtn} onClick={onEdit}>✏️</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Field ────────────────────────────────────────────────────────────────────
+function Field({ label, type, value, onChange, placeholder }) {
+  return (
+    <div style={S.fieldWrap}>
+      <label style={S.label}>{label}</label>
+      <input style={S.input} type={type} value={value} placeholder={placeholder||""} onChange={e=>onChange(e.target.value)} />
+    </div>
+  );
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+function Modal({ initial, onSave, onClose }) {
+  const blank = { tipo:"gasto", concepto:"", monto:"", cat:"renta", fecha:today(), vencimiento:"", pagado:false, notas:"" };
+  const [form, setForm] = useState(initial ? {...initial, monto:String(initial.monto), vencimiento:initial.vencimiento||""} : blank);
+  const [err, setErr]   = useState("");
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const submit = () => {
+    if (!form.concepto.trim())                                   return setErr("El concepto es obligatorio.");
+    if (!form.monto || isNaN(Number(form.monto)) || Number(form.monto)<=0) return setErr("Ingresa un monto válido.");
+    onSave({ ...form, id:initial?.id, monto:Number(form.monto), vencimiento:form.vencimiento||null });
+  };
+
+  return (
+    <div style={S.overlay} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div style={S.modalBox}>
+        <div style={S.modalHeader}>
+          <span style={{fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700}}>
+            {initial?"Editar movimiento":"Nuevo movimiento"}
+          </span>
+          <button style={S.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        {/* Tipo ingreso / gasto */}
+        <div style={S.formRow}>
+          {["ingreso","gasto"].map(t => (
+            <button key={t}
+              style={{...S.tipBtn, ...(form.tipo===t ? {
+                fontWeight:700,
+                background: t==="ingreso"?"#eafaf1":"#fdf0ed",
+                borderColor: t==="ingreso"?"#2ecc71":"#e07b54"
+              } : {})}}
+              onClick={()=>set("tipo",t)}>
+              {t==="ingreso"?"📈 Ingreso":"📉 Gasto"}
+            </button>
+          ))}
+        </div>
+
+        <Field label="Concepto"   type="text"   value={form.concepto}    onChange={v=>set("concepto",v)}    placeholder="Ej. Luz CFE" />
+        <Field label="Monto ($)"  type="number" value={form.monto}       onChange={v=>set("monto",v)}       placeholder="0.00" />
+        <Field label="Fecha"      type="date"   value={form.fecha}       onChange={v=>set("fecha",v)} />
+
+        <div style={S.fieldWrap}>
+          <label style={S.label}>Categoría</label>
+          <select style={S.input} value={form.cat} onChange={e=>set("cat",e.target.value)}>
+            {CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+          </select>
+        </div>
+
+        <Field label="Fecha de vencimiento (opcional)" type="date" value={form.vencimiento} onChange={v=>set("vencimiento",v)} />
+
+        {form.vencimiento && (
+          <div style={{...S.fieldWrap, flexDirection:"row", alignItems:"center", gap:10}}>
+            <input type="checkbox" id="pagado" checked={form.pagado} onChange={e=>set("pagado",e.target.checked)} style={{width:17,height:17}} />
+            <label htmlFor="pagado" style={{...S.label, margin:0}}>Marcar como pagado</label>
+          </div>
+        )}
+
+        <Field label="Notas (opcional)" type="text" value={form.notas} onChange={v=>set("notas",v)} placeholder="Bimestral, cuota fija…" />
+
+        {err && <p style={{color:"#c0392b", fontSize:13, margin:"4px 0 8px"}}>{err}</p>}
+
+        <div style={S.modalFooter}>
+          <button style={S.cancelBtn} onClick={onClose}>Cancelar</button>
+          <button style={S.saveBtn}   onClick={submit}>{initial?"Guardar cambios":"Agregar"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App principal ────────────────────────────────────────────────────────────
+function App() {
+  const [movs,     setMovs]     = useState(() => load("hf_movs", DEMO));
+  const [tab,      setTab]      = useState("resumen");
+  const [modal,    setModal]    = useState(false);
+  const [editing,  setEditing]  = useState(null);
+  const [filtCat,  setFiltCat]  = useState("todas");
+  const [filtTipo, setFiltTipo] = useState("todos");
+  const [search,   setSearch]   = useState("");
+
+  useEffect(()=>{ save("hf_movs", movs); }, [movs]);
+
+  const ingresos = movs.filter(m=>m.tipo==="ingreso").reduce((s,m)=>s+m.monto,0);
+  const gastos   = movs.filter(m=>m.tipo==="gasto"  ).reduce((s,m)=>s+m.monto,0);
+  const balance  = ingresos - gastos;
+
+  const proximos = movs.filter(m=>m.vencimiento&&!m.pagado).sort((a,b)=>a.vencimiento.localeCompare(b.vencimiento));
+  const vencidos = proximos.filter(m=>diffDays(m.vencimiento)<0);
+  const urgentes = proximos.filter(m=>{ const d=diffDays(m.vencimiento); return d>=0&&d<=3; });
+
+  const filtered = movs
+    .filter(m=>filtCat==="todas"||m.cat===filtCat)
+    .filter(m=>filtTipo==="todos"||m.tipo===filtTipo)
+    .filter(m=>m.concepto.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  const porCat = CATS.map(c=>({...c, total:movs.filter(m=>m.tipo==="gasto"&&m.cat===c.id).reduce((s,m)=>s+m.monto,0)}))
+    .filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+
+  const upsert = (mov) => {
+    setMovs(prev => mov.id && prev.find(m=>m.id===mov.id)
+      ? prev.map(m=>m.id===mov.id?mov:m)
+      : [...prev,{...mov,id:uid()}]);
+    setModal(false); setEditing(null);
+  };
+  const del        = (id) => setMovs(prev=>prev.filter(m=>m.id!==id));
+  const togglePago = (id) => setMovs(prev=>prev.map(m=>m.id===id?{...m,pagado:!m.pagado}:m));
+  const openEdit   = (m)  => { setEditing(m); setModal(true); };
+  const openAdd    = ()   => { setEditing(null); setModal(true); };
+
+  return (
+    <div style={S.app}>
+
+      {/* HEADER */}
+      <header style={S.header}>
+        <div style={S.logoArea}>
+          <span style={S.logoIcon}>🏡</span>
+          <span style={S.logoText}>CasaContable</span>
+        </div>
+        <button style={S.addBtn} className="btn-add" onClick={openAdd}>
+          <span style={{fontSize:18,lineHeight:1}}>+</span> Nuevo
+        </button>
+      </header>
+
+      {/* BANNER ALERTAS */}
+      {(vencidos.length>0||urgentes.length>0) && (
+        <div style={{...S.banner, background:vencidos.length?"#fef1ee":"#fffbeb"}}>
+          <span style={{fontSize:14}}>
+            {vencidos.length>0
+              ? `⚠️ ${vencidos.length} pago${vencidos.length>1?"s":""} vencido${vencidos.length>1?"s":""}`
+              : `🔔 ${urgentes.length} pago${urgentes.length>1?"s":""} vence en ≤ 3 días`}
+          </span>
+          <button style={S.bannerLink} onClick={()=>setTab("vencimientos")}>Ver →</button>
+        </div>
+      )}
+
+      {/* TABS */}
+      <nav style={S.tabs}>
+        {[["resumen","📊 Resumen"],["movimientos","📋 Movimientos"],["vencimientos","🔔 Vencimientos"]].map(([id,label])=>(
+          <button key={id} style={{...S.tab,...(tab===id?S.tabActive:{})}} onClick={()=>setTab(id)}>{label}</button>
+        ))}
+      </nav>
+
+      <main style={S.main}>
+
+        {/* ══ RESUMEN ══ */}
+        {tab==="resumen" && (
+          <div>
+            <div style={S.kpiRow}>
+              <KPI label="Ingresos" value={fmt(ingresos)} color="#2ecc71" icon="📈" />
+              <KPI label="Gastos"   value={fmt(gastos)}   color="#e74c3c" icon="📉" />
+              <KPI label="Balance"  value={fmt(balance)}  color={balance>=0?"#5b8fd9":"#d96b8f"} icon="💰" big />
+            </div>
+
+            {porCat.length>0 && (
+              <section style={S.card}>
+                <h3 style={S.sectionTitle}>Gastos por categoría</h3>
+                {porCat.map(c=>(
+                  <div key={c.id} style={S.catRow}>
+                    <span style={{fontSize:18}}>{c.icon}</span>
+                    <span style={{flex:1, fontSize:13}}>{c.label}</span>
+                    <div style={{...S.barTrack, margin:"0 10px"}}>
+                      <div style={{...S.barFill, width:`${(c.total/gastos*100).toFixed(1)}%`, background:c.color}} />
+                    </div>
+                    <span style={{fontSize:12, color:"#555", minWidth:68, textAlign:"right"}}>{fmt(c.total)}</span>
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {proximos.length>0 && (
+              <section style={S.card}>
+                <h3 style={S.sectionTitle}>Próximos vencimientos</h3>
+                {proximos.slice(0,3).map(m=>(
+                  <VencRow key={m.id} m={m} onPago={()=>togglePago(m.id)} onEdit={()=>openEdit(m)} />
+                ))}
+                {proximos.length>3 && (
+                  <button style={S.verMas} onClick={()=>setTab("vencimientos")}>Ver todos ({proximos.length}) →</button>
+                )}
+              </section>
+            )}
+
+            {porCat.length===0 && proximos.length===0 && (
+              <div style={S.empty}>Agrega tu primer movimiento con el botón <strong>+ Nuevo</strong></div>
+            )}
+          </div>
+        )}
+
+        {/* ══ MOVIMIENTOS ══ */}
+        {tab==="movimientos" && (
+          <div>
+            <div style={S.filters}>
+              <input style={S.searchInput} placeholder="🔍  Buscar…" value={search} onChange={e=>setSearch(e.target.value)} />
+              <select style={S.sel} value={filtTipo} onChange={e=>setFiltTipo(e.target.value)}>
+                <option value="todos">Todos</option>
+                <option value="ingreso">Ingresos</option>
+                <option value="gasto">Gastos</option>
+              </select>
+              <select style={S.sel} value={filtCat} onChange={e=>setFiltCat(e.target.value)}>
+                <option value="todas">Categoría</option>
+                {CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+              </select>
+            </div>
+            {filtered.length===0
+              ? <div style={S.empty}>No hay movimientos con ese filtro.</div>
+              : filtered.map(m=>(
+                  <MovRow key={m.id} m={m}
+                    onEdit={()=>openEdit(m)}
+                    onDel={()=>del(m.id)}
+                    onPago={()=>togglePago(m.id)} />
+                ))
+            }
+          </div>
+        )}
+
+        {/* ══ VENCIMIENTOS ══ */}
+        {tab==="vencimientos" && (
+          <div>
+            {vencidos.length>0 && (
+              <section style={S.card}>
+                <h3 style={{...S.sectionTitle, color:"#c0392b"}}>⚠️ Vencidos</h3>
+                {vencidos.map(m=><VencRow key={m.id} m={m} onPago={()=>togglePago(m.id)} onEdit={()=>openEdit(m)} />)}
+              </section>
+            )}
+            {urgentes.length>0 && (
+              <section style={S.card}>
+                <h3 style={{...S.sectionTitle, color:"#e67e22"}}>🔔 Vencen pronto (≤ 3 días)</h3>
+                {urgentes.map(m=><VencRow key={m.id} m={m} onPago={()=>togglePago(m.id)} onEdit={()=>openEdit(m)} />)}
+              </section>
+            )}
+            {proximos.filter(m=>diffDays(m.vencimiento)>3).length>0 && (
+              <section style={S.card}>
+                <h3 style={S.sectionTitle}>📅 Próximos pagos</h3>
+                {proximos.filter(m=>diffDays(m.vencimiento)>3).map(m=>(
+                  <VencRow key={m.id} m={m} onPago={()=>togglePago(m.id)} onEdit={()=>openEdit(m)} />
+                ))}
+              </section>
+            )}
+            {proximos.length===0 && <div style={S.empty}>No hay pagos pendientes. ¡Todo al día! 🎉</div>}
+          </div>
+        )}
+
+      </main>
+
+      {modal && <Modal initial={editing} onSave={upsert} onClose={()=>{ setModal(false); setEditing(null); }} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
